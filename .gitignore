@@ -1,0 +1,11 @@
+.DS_Store
+Thumbs.db
+*.class
+*.classpath
+*.project
+*.settings/
+*.jar
+*.war
+*.ear
+log/
+target/
