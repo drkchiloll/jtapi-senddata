@@ -1,6 +1,7 @@
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import javax.telephony.Address;
+import javax.telephony.JtapiPeer;
 import javax.telephony.MethodNotSupportedException;
 import javax.telephony.Provider;
 import javax.telephony.ProviderObserver;
@@ -11,6 +12,7 @@ import javax.telephony.events.ProvEv;
 import javax.telephony.events.ProvInServiceEv;
 import javax.telephony.events.TermEv;
 import com.cisco.cti.util.Condition;
+import com.cisco.jtapi.extensions.CiscoProvider;
 import com.cisco.jtapi.extensions.CiscoTermInServiceEv;
 import com.cisco.jtapi.extensions.CiscoTermOutOfServiceEv;
 import com.cisco.jtapi.extensions.CiscoTerminal;
@@ -22,6 +24,7 @@ public class DataTerminal implements ProviderObserver, TerminalObserver {
   private CiscoTerminal observedTerminal;
   Provider provider;
   Condition condInService;
+  CiscoProvider cscoProvider;
 
   //Constructor for DataTerminal
   public DataTerminal(@SuppressWarnings("rawtypes") List jtapi) {
@@ -34,10 +37,21 @@ public class DataTerminal implements ProviderObserver, TerminalObserver {
   	  e.printStackTrace();
   	}
   }
+  //Constructor for DataTerminal
+  public DataTerminal(JtapiPeer peer, String providerStr) {
+	  try {
+		  cscoProvider = (CiscoProvider) peer.getProvider(providerStr);
+		  cscoProvider.addObserver(this);
+		  condInService.waitTrue();
+	  } catch(Exception e) {
+		  // Help
+	  }
+  }
 
   public void providerChangedEvent(ProvEv[] evtList) {
   	if(evtList != null) {
   	  for(int i = 0; i < evtList.length; i++) {
+//  		System.out.println(evtList[i]);
   	    if(evtList[i] instanceof ProvInServiceEv) {
     		  condInService.set();
     		}
@@ -47,7 +61,7 @@ public class DataTerminal implements ProviderObserver, TerminalObserver {
 
   public void terminalChangedEvent(TermEv[] evts) {
 	  for(int i=0; i<evts.length; i++) {
-	  	  System.out.println(evts[i].getID());
+//	  	  System.out.println(evts[i]);
   		  switch(evts[i].getID()) {
 		      case CiscoTermInServiceEv.ID:
   			    try {
@@ -72,9 +86,9 @@ public class DataTerminal implements ProviderObserver, TerminalObserver {
   		Terminal[] ct = destAddress.getTerminals();
   		for(int i=0;i<ct.length;i++) {
   			String cscoTerm = (CiscoTerminal) ct[i] + "";
-  			System.out.println(cscoTerm);
+//  			System.out.println(cscoTerm);
   			if(cscoTerm.equals(devName)) {
-  				System.out.println("Hello World");
+//  				System.out.println("Hello World");
   				observedTerminal = (CiscoTerminal) ct[i];
   				break;
   			} else {
@@ -98,8 +112,24 @@ public class DataTerminal implements ProviderObserver, TerminalObserver {
 		  return "no resp";
 	  }
   }
+  
+  public void getTermState() {
+	 System.out.println(observedTerminal.getRegistrationState());
+  }
 
   public void close() {
-	provider.shutdown();
+	provider.shutdown();	
+  }
+  
+  public void termObs(String terminal) {
+	try {
+	  Terminal term = provider.getTerminal(terminal);
+	  destAddress = term.getAddresses()[0];
+	  Terminal ct = destAddress.getTerminals()[0];
+	  observedTerminal = (CiscoTerminal) ct;
+	  observedTerminal.addObserver(this);
+    } catch(Exception e) {
+	  // HI
+    }
   }
 }
